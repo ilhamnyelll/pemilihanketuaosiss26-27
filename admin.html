@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <title>Admin PILKETOS</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<nav class="navbar bg-dark navbar-dark">
+
+  <div class="container">
+
+    <span class="navbar-brand fw-bold">
+      🔐 ADMIN PILKETOS
+    </span>
+
+  </div>
+
+</nav>
+
+
+<main class="container py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2 class="fw-bold">
+      Dashboard
+    </h2>
+
+    <button
+      onclick="loadDashboard()"
+      class="btn btn-primary"
+    >
+      🔄 Refresh
+    </button>
+
+  </div>
+
+
+  <!-- STATISTIK -->
+
+  <div class="row g-3 mb-4">
+
+    <div class="col-md-4">
+
+      <div class="stat">
+
+        <small>
+          Total DPT
+        </small>
+
+        <h2>
+          500
+        </h2>
+
+      </div>
+
+    </div>
+
+
+    <div class="col-md-4">
+
+      <div class="stat">
+
+        <small>
+          Sudah Memilih
+        </small>
+
+        <h2 id="used">
+          0
+        </h2>
+
+      </div>
+
+    </div>
+
+
+    <div class="col-md-4">
+
+      <div class="stat">
+
+        <small>
+          Belum Memilih
+        </small>
+
+        <h2 id="remaining">
+          500
+        </h2>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- HASIL -->
+
+  <div class="card shadow-sm p-4 mb-4">
+
+    <h4 class="fw-bold">
+      Perolehan Suara
+    </h4>
+
+    <div id="results"></div>
+
+  </div>
+
+
+  <!-- PENCARIAN -->
+
+  <div class="card shadow-sm p-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+      <h4 class="fw-bold mb-0">
+        Daftar Pemilih
+      </h4>
+
+      <span id="dataInfo" class="text-muted">
+        0 data
+      </span>
+
+    </div>
+
+
+    <input
+      id="searchInput"
+      type="text"
+      class="form-control mb-3"
+      placeholder="🔎 Cari nama, kelas, atau nomor absen..."
+      oninput="filterTable()"
+    >
+
+
+    <div class="table-responsive">
+
+      <table class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+          <tr>
+            <th>No</th>
+            <th>Nama Siswa</th>
+            <th>Kelas</th>
+            <th>Absen</th>
+            <th>Paslon</th>
+            <th>Waktu</th>
+          </tr>
+
+        </thead>
+
+        <tbody id="logs"></tbody>
+
+      </table>
+
+    </div>
+
+
+    <div class="text-center mt-3">
+
+      <button
+        id="prevButton"
+        onclick="previousPage()"
+        class="btn btn-secondary"
+      >
+        ← Sebelumnya
+      </button>
+
+      <span
+        id="pageInfo"
+        class="mx-3"
+      >
+        Halaman 1
+      </span>
+
+      <button
+        id="nextButton"
+        onclick="nextPage()"
+        class="btn btn-secondary"
+      >
+        Berikutnya →
+      </button>
+
+    </div>
+
+  </div>
+
+</main>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+const SUPABASE_URL =
+  "GANTI_DENGAN_PROJECT_URL";
+
+const SUPABASE_KEY =
+  "GANTI_DENGAN_PUBLISHABLE_KEY";
+
+const db =
+  supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+
+const DPT = 500;
+
+const PAGE_SIZE = 50;
+
+let allVotes = [];
+
+let filteredVotes = [];
+
+let currentPage = 1;
+
+
+async function loadDashboard() {
+
+  const {
+    data,
+    error
+  } = await db
+    .from("votes")
+    .select(
+      "name,class_name,absent,candidate,created_at"
+    )
+    .order(
+      "created_at",
+      {
+        ascending: true
+      }
+    );
+
+
+  if (error) {
+
+    console.error(error);
+
+    alert(
+      "Gagal mengambil data dari database."
+    );
+
+    return;
+  }
+
+
+  allVotes = data || [];
+
+  filteredVotes = [...allVotes];
+
+  currentPage = 1;
+
+
+  document.getElementById("used")
+    .textContent = allVotes.length;
+
+
+  document.getElementById("remaining")
+    .textContent =
+      Math.max(
+        DPT - allVotes.length,
+        0
+      );
+
+
+  renderResults();
+
+  renderTable();
+
+}
+
+
+function renderResults() {
+
+  const results =
+    document.getElementById(
+      "results"
+    );
+
+
+  results.innerHTML =
+    [1, 2, 3]
+      .map(candidate => {
+
+        const votes =
+          allVotes.filter(
+            item =>
+              item.candidate === candidate
+          ).length;
+
+
+        const percentage =
+          allVotes.length
+            ? votes / allVotes.length * 100
+            : 0;
+
+
+        return `
+
+          <div class="mb-4">
+
+            <div
+              class="d-flex justify-content-between"
+            >
+
+              <strong>
+                Paslon ${candidate}
+              </strong>
+
+              <span>
+                ${votes} suara
+                (${percentage.toFixed(1)}%)
+              </span>
+
+            </div>
+
+            <div class="progress mt-2">
+
+              <div
+                class="progress-bar"
+                style="width:${percentage}%"
+              ></div>
+
+            </div>
+
+          </div>
+
+        `;
+
+      })
+      .join("");
+
+}
+
+
+function filterTable() {
+
+  const keyword =
+    document
+      .getElementById("searchInput")
+      .value
+      .toLowerCase()
+      .trim();
+
+
+  filteredVotes =
+    allVotes.filter(item =>
+
+      String(item.name)
+        .toLowerCase()
+        .includes(keyword)
+
+      ||
+
+      String(item.class_name)
+        .toLowerCase()
+        .includes(keyword)
+
+      ||
+
+      String(item.absent)
+        .includes(keyword)
+
+    );
+
+
+  currentPage = 1;
+
+  renderTable();
+
+}
+
+
+function renderTable() {
+
+  const table =
+    document.getElementById(
+      "logs"
+    );
+
+
+  const totalPages =
+    Math.max(
+      Math.ceil(
+        filteredVotes.length /
+        PAGE_SIZE
+      ),
+      1
+    );
+
+
+  if (currentPage > totalPages) {
+    currentPage = totalPages;
+  }
+
+
+  const start =
+    (currentPage - 1) *
+    PAGE_SIZE;
+
+
+  const end =
+    start + PAGE_SIZE;
+
+
+  const pageData =
+    filteredVotes.slice(
+      start,
+      end
+    );
+
+
+  table.innerHTML =
+    pageData.map(
+      (item, index) => {
+
+        const number =
+          start + index + 1;
+
+
+        const date =
+          new Date(
+            item.created_at
+          ).toLocaleString(
+            "id-ID"
+          );
+
+
+        return `
+
+          <tr>
+
+            <td>
+              ${number}
+            </td>
+
+            <td>
+              ${escapeHTML(item.name)}
+            </td>
+
+            <td>
+              ${escapeHTML(item.class_name)}
+            </td>
+
+            <td>
+              ${item.absent}
+            </td>
+
+            <td>
+              <span class="badge bg-primary">
+                Paslon ${item.candidate}
+              </span>
+            </td>
+
+            <td>
+              ${date}
+            </td>
+
+          </tr>
+
+        `;
+
+      }
+    ).join("");
+
+
+  document.getElementById(
+    "pageInfo"
+  ).textContent =
+    `Halaman ${currentPage} / ${totalPages}`;
+
+
+  document.getElementById(
+    "dataInfo"
+  ).textContent =
+    `${filteredVotes.length} data`;
+
+
+  document.getElementById(
+    "prevButton"
+  ).disabled =
+    currentPage <= 1;
+
+
+  document.getElementById(
+    "nextButton"
+  ).disabled =
+    currentPage >= totalPages;
+
+}
+
+
+function previousPage() {
+
+  if (currentPage > 1) {
+
+    currentPage--;
+
+    renderTable();
+
+  }
+
+}
+
+
+function nextPage() {
+
+  const totalPages =
+    Math.ceil(
+      filteredVotes.length /
+      PAGE_SIZE
+    );
+
+
+  if (currentPage < totalPages) {
+
+    currentPage++;
+
+    renderTable();
+
+  }
+
+}
+
+
+function escapeHTML(value) {
+
+  return String(value)
+    .replace(
+      /[&<>"']/g,
+      character => ({
+
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+
+      })[character]
+    );
+
+}
+
+
+loadDashboard();
+
+</script>
+
+</body>
+</html>
